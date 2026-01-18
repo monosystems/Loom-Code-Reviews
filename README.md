@@ -104,11 +104,16 @@ pnpm dev
 
 | Guide | Description |
 |-------|-------------|
+| [Getting Started](docs/getting-started.md) | Step-by-step setup tutorial |
 | [Architecture](docs/architecture.md) | System design and components |
 | [Self-Hosting](docs/self-hosting.md) | Deployment options and requirements |
 | [Configuration](docs/configuration.md) | Complete YAML config reference |
 | [Custom Prompts](docs/custom-prompts.md) | Writing your own review prompts |
+| [Example Prompts](docs/example-prompts.md) | Ready-to-use prompt templates |
 | [LLM Providers](docs/llm-providers.md) | Setting up different AI providers |
+| [API Reference](docs/api.md) | REST API and webhook documentation |
+| [Migration Guide](docs/migration.md) | Switch from other review tools |
+| [Troubleshooting](docs/troubleshooting.md) | Common issues and solutions |
 
 ### Platform Adapters
 | Platform | Guide |
