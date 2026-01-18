@@ -1,0 +1,14 @@
+# Minimal Loom Configuration
+#
+# This is the simplest possible Loom configuration.
+# Perfect for getting started quickly.
+
+models:
+  default:
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    model: gpt-4
+
+pipelines:
+  - name: review
+    model: default

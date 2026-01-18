@@ -1,0 +1,56 @@
+# Multi-LLM Configuration
+#
+# Use different LLM providers for different review types.
+# GPT-4 for security, Claude for code quality, Ollama for docs.
+
+models:
+  gpt4-security:
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    model: gpt-4
+    temperature: 0.0
+    max_tokens: 4000
+  
+  claude-quality:
+    base_url: https://api.anthropic.com/v1
+    api_key_env: ANTHROPIC_API_KEY
+    model: claude-sonnet-4-20250514
+    temperature: 0.0
+    max_tokens: 4000
+  
+  ollama-docs:
+    base_url: http://localhost:11434/v1
+    model: codellama:13b
+    temperature: 0.0
+    max_tokens: 2000
+
+pipelines:
+  # Security review with GPT-4
+  - name: security
+    model: gpt4-security
+    prompt_file: prompts/security.md
+    severity: blocker
+  
+  # Code quality with Claude
+  - name: quality
+    model: claude-quality
+    prompt_file: prompts/quality.md
+    severity: warning
+  
+  # Documentation with local Ollama (free!)
+  - name: documentation
+    model: ollama-docs
+    prompt_file: prompts/docs.md
+    severity: info
+
+triggers:
+  branches:
+    - main
+    - develop
+  
+  max_changes: 2000
+
+output:
+  summary: true
+  inline_comments: true
+  min_severity: warning

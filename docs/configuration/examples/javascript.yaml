@@ -1,0 +1,80 @@
+# JavaScript/TypeScript Configuration
+#
+# Optimized for Node.js and React projects.
+# Checks for common JS/TS issues, React patterns, and security.
+
+models:
+  default:
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    model: gpt-4
+    temperature: 0.0
+    max_tokens: 4000
+
+pipelines:
+  # JavaScript security review
+  - name: js-security
+    model: default
+    prompt_file: prompts/js-security.md
+    severity: blocker
+    include_paths:
+      - "src/**/*.js"
+      - "src/**/*.ts"
+      - "src/**/*.jsx"
+      - "src/**/*.tsx"
+    exclude_paths:
+      - "**/*.test.*"
+      - "**/*.spec.*"
+  
+  # React best practices
+  - name: react-patterns
+    model: default
+    prompt_file: prompts/react.md
+    severity: warning
+    include_paths:
+      - "src/**/*.jsx"
+      - "src/**/*.tsx"
+      - "components/**/*.jsx"
+      - "components/**/*.tsx"
+  
+  # TypeScript type safety
+  - name: typescript-types
+    model: default
+    prompt_file: prompts/typescript.md
+    severity: warning
+    include_paths:
+      - "**/*.ts"
+      - "**/*.tsx"
+  
+  # API/Backend patterns
+  - name: nodejs-backend
+    model: default
+    prompt_file: prompts/nodejs.md
+    severity: warning
+    include_paths:
+      - "api/**/*.js"
+      - "api/**/*.ts"
+      - "server/**/*.js"
+      - "server/**/*.ts"
+
+triggers:
+  branches:
+    - main
+    - develop
+  
+  # Skip generated and dependency files
+  ignore_paths:
+    - "node_modules/**"
+    - "dist/**"
+    - "build/**"
+    - "*.lock"
+    - "package-lock.json"
+    - "yarn.lock"
+  
+  max_changes: 2000
+
+output:
+  summary: true
+  inline_comments: true
+  min_severity: warning
+  max_comments: 35

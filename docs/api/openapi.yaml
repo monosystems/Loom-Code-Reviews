@@ -1,0 +1,701 @@
+openapi: 3.0.3
+
+info:
+  title: Loom Code Reviews API
+  description: |
+    Loom is a self-hosted, open-source AI code review platform.
+    
+    This API receives webhooks from git platforms (GitHub, GitLab, Bitbucket, Gitea, Azure DevOps)
+    and triggers automated code reviews using configurable LLM providers.
+    
+    ## Features
+    - Multi-platform support (GitHub, GitLab, Bitbucket, Gitea, Azure DevOps)
+    - Multi-LLM support (OpenAI, Claude, Ollama, etc.)
+    - Configurable review pipelines
+    - Webhook signature verification
+    
+    ## Authentication
+    Webhooks are authenticated using platform-specific signatures (HMAC-SHA256 or tokens).
+    
+    ## Base URL
+    Production: `https://your-loom-instance.com`
+    Development: `http://localhost:8000`
+  version: 0.1.0
+  contact:
+    name: Loom Support
+    url: https://github.com/your-org/loom
+  license:
+    name: AGPL-3.0
+    url: https://www.gnu.org/licenses/agpl-3.0.html
+
+servers:
+  - url: https://loom.example.com
+    description: Production server
+  - url: http://localhost:8000
+    description: Development server
+
+tags:
+  - name: health
+    description: Health check endpoints
+  - name: webhooks
+    description: Webhook endpoints for git platforms
+  - name: metrics
+    description: Metrics and monitoring
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Check if the service is running and healthy
+      operationId: health_check
+      tags:
+        - health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      description: Get Prometheus-compatible metrics
+      operationId: get_metrics
+      tags:
+        - metrics
+      responses:
+        '200':
+          description: Metrics in Prometheus format
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  # HELP loom_webhooks_total Total number of webhooks received
+                  # TYPE loom_webhooks_total counter
+                  loom_webhooks_total{platform="github",status="success"} 42
+
+  /webhooks/github:
+    post:
+      summary: GitHub webhook
+      description: Receives webhook events from GitHub for pull request reviews
+      operationId: github_webhook
+      tags:
+        - webhooks
+      parameters:
+        - name: X-GitHub-Event
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: [pull_request]
+          description: GitHub event type
+        - name: X-GitHub-Delivery
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique delivery ID
+        - name: X-Hub-Signature-256
+          in: header
+          required: true
+          schema:
+            type: string
+          description: HMAC-SHA256 signature for verification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GitHubWebhook'
+            examples:
+              pr_opened:
+                summary: Pull request opened
+                value:
+                  action: opened
+                  number: 42
+                  pull_request:
+                    id: 123456789
+                    number: 42
+                    title: "Add user authentication"
+                    state: open
+                    user:
+                      login: developer
+                    head:
+                      ref: feature/auth
+                      sha: abc123def456789012345678901234567890abcd
+                    base:
+                      ref: main
+                  repository:
+                    id: 987654321
+                    full_name: owner/repo
+      responses:
+        '200':
+          description: Webhook received successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookResponse'
+        '401':
+          description: Invalid signature
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /webhooks/gitlab:
+    post:
+      summary: GitLab webhook
+      description: Receives webhook events from GitLab for merge request reviews
+      operationId: gitlab_webhook
+      tags:
+        - webhooks
+      parameters:
+        - name: X-Gitlab-Event
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: [Merge Request Hook]
+          description: GitLab event type
+        - name: X-Gitlab-Token
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Secret token for verification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GitLabWebhook'
+      responses:
+        '200':
+          description: Webhook received successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookResponse'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /webhooks/bitbucket:
+    post:
+      summary: Bitbucket webhook
+      description: Receives webhook events from Bitbucket for pull request reviews
+      operationId: bitbucket_webhook
+      tags:
+        - webhooks
+      parameters:
+        - name: X-Event-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: [pullrequest:created, pullrequest:updated]
+          description: Bitbucket event type
+        - name: X-Hook-UUID
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Webhook UUID for verification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BitbucketWebhook'
+      responses:
+        '200':
+          description: Webhook received successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookResponse'
+        '401':
+          description: Unknown webhook UUID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /webhooks/gitea:
+    post:
+      summary: Gitea webhook
+      description: Receives webhook events from Gitea for pull request reviews
+      operationId: gitea_webhook
+      tags:
+        - webhooks
+      parameters:
+        - name: X-Gitea-Event
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: [pull_request]
+          description: Gitea event type
+        - name: X-Gitea-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: HMAC-SHA256 signature for verification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GiteaWebhook'
+      responses:
+        '200':
+          description: Webhook received successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookResponse'
+        '401':
+          description: Invalid signature
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /webhooks/azure-devops:
+    post:
+      summary: Azure DevOps webhook
+      description: Receives webhook events from Azure DevOps for pull request reviews
+      operationId: azure_devops_webhook
+      tags:
+        - webhooks
+      security:
+        - basicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AzureDevOpsWebhook'
+      responses:
+        '200':
+          description: Webhook received successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      description: Basic authentication for Azure DevOps webhooks
+
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - version
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          example: healthy
+        version:
+          type: string
+          example: 0.1.0
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-01-18T14:30:00Z"
+        components:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [healthy, unhealthy]
+            redis:
+              type: string
+              enum: [healthy, unhealthy]
+            celery:
+              type: string
+              enum: [healthy, unhealthy]
+
+    WebhookResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+          example: true
+        job_id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        message:
+          type: string
+          example: Review job queued
+        repository:
+          type: string
+          example: owner/repo
+        pr_number:
+          type: integer
+          example: 42
+        reason:
+          type: string
+          enum: [repo_not_enabled, triggers_not_matched, pr_too_large, branch_excluded]
+          description: Reason for ignoring webhook (when success=false)
+
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - error
+        - message
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          enum: [invalid_signature, invalid_payload, internal_error, rate_limit_exceeded]
+          example: invalid_signature
+        message:
+          type: string
+          example: Invalid webhook signature
+        retry_after:
+          type: integer
+          description: Seconds to wait before retrying (for rate limits)
+
+    GitHubWebhook:
+      type: object
+      required:
+        - action
+        - number
+        - pull_request
+        - repository
+      properties:
+        action:
+          type: string
+          enum: [opened, synchronize, reopened]
+        number:
+          type: integer
+        pull_request:
+          type: object
+          required:
+            - id
+            - number
+            - title
+            - user
+            - head
+            - base
+          properties:
+            id:
+              type: integer
+            number:
+              type: integer
+            title:
+              type: string
+            state:
+              type: string
+              enum: [open, closed]
+            user:
+              type: object
+              properties:
+                login:
+                  type: string
+            head:
+              type: object
+              properties:
+                ref:
+                  type: string
+                sha:
+                  type: string
+            base:
+              type: object
+              properties:
+                ref:
+                  type: string
+        repository:
+          type: object
+          required:
+            - id
+            - full_name
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            full_name:
+              type: string
+
+    GitLabWebhook:
+      type: object
+      required:
+        - object_kind
+        - project
+        - object_attributes
+      properties:
+        object_kind:
+          type: string
+          enum: [merge_request]
+        event_type:
+          type: string
+        user:
+          type: object
+          properties:
+            username:
+              type: string
+        project:
+          type: object
+          required:
+            - id
+            - path_with_namespace
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            path_with_namespace:
+              type: string
+        object_attributes:
+          type: object
+          required:
+            - id
+            - iid
+            - title
+            - state
+            - source_branch
+            - target_branch
+          properties:
+            id:
+              type: integer
+            iid:
+              type: integer
+            title:
+              type: string
+            state:
+              type: string
+            action:
+              type: string
+              enum: [open, update, reopen]
+            source_branch:
+              type: string
+            target_branch:
+              type: string
+            last_commit:
+              type: object
+              properties:
+                id:
+                  type: string
+
+    BitbucketWebhook:
+      type: object
+      required:
+        - pullrequest
+        - repository
+      properties:
+        pullrequest:
+          type: object
+          required:
+            - id
+            - title
+            - state
+            - source
+            - destination
+          properties:
+            id:
+              type: integer
+            title:
+              type: string
+            state:
+              type: string
+              enum: [OPEN, MERGED, DECLINED]
+            author:
+              type: object
+              properties:
+                username:
+                  type: string
+            source:
+              type: object
+              properties:
+                branch:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                commit:
+                  type: object
+                  properties:
+                    hash:
+                      type: string
+            destination:
+              type: object
+              properties:
+                branch:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+        repository:
+          type: object
+          required:
+            - full_name
+          properties:
+            name:
+              type: string
+            full_name:
+              type: string
+            uuid:
+              type: string
+
+    GiteaWebhook:
+      type: object
+      required:
+        - action
+        - number
+        - pull_request
+        - repository
+      properties:
+        action:
+          type: string
+          enum: [opened, synchronized, reopened]
+        number:
+          type: integer
+        pull_request:
+          type: object
+          required:
+            - id
+            - number
+            - title
+            - user
+            - head
+            - base
+          properties:
+            id:
+              type: integer
+            number:
+              type: integer
+            title:
+              type: string
+            state:
+              type: string
+            user:
+              type: object
+              properties:
+                login:
+                  type: string
+            head:
+              type: object
+              properties:
+                ref:
+                  type: string
+                sha:
+                  type: string
+            base:
+              type: object
+              properties:
+                ref:
+                  type: string
+        repository:
+          type: object
+          required:
+            - id
+            - full_name
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            full_name:
+              type: string
+
+    AzureDevOpsWebhook:
+      type: object
+      required:
+        - eventType
+        - resource
+      properties:
+        subscriptionId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          enum: [git.pullrequest.created, git.pullrequest.updated]
+        resource:
+          type: object
+          required:
+            - pullRequestId
+            - title
+            - sourceRefName
+            - targetRefName
+            - repository
+          properties:
+            pullRequestId:
+              type: integer
+            status:
+              type: string
+              enum: [active, completed]
+            title:
+              type: string
+            createdBy:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                uniqueName:
+                  type: string
+            sourceRefName:
+              type: string
+            targetRefName:
+              type: string
+            lastMergeSourceCommit:
+              type: object
+              properties:
+                commitId:
+                  type: string
+            repository:
+              type: object
+              required:
+                - id
+                - name
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+                project:
+                  type: object
+                  properties:
+                    name:
+                      type: string

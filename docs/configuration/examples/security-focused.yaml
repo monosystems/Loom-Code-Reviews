@@ -1,0 +1,122 @@
+# Security-Focused Configuration
+#
+# Maximum security focus with comprehensive checks.
+# All findings are blockers - nothing gets merged with security issues.
+
+models:
+  security-primary:
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    model: gpt-4
+    temperature: 0.0
+    max_tokens: 8000
+    timeout: 90
+
+pipelines:
+  # OWASP Top 10
+  - name: owasp-top-10
+    model: security-primary
+    prompt_file: prompts/owasp-top10.md
+    severity: blocker
+  
+  # Injection attacks
+  - name: injection
+    model: security-primary
+    prompt_file: prompts/injection.md
+    severity: blocker
+    include_paths:
+      - "**/*.py"
+      - "**/*.js"
+      - "**/*.ts"
+      - "**/*.java"
+      - "**/*.php"
+  
+  # Authentication & Authorization
+  - name: auth-authz
+    model: security-primary
+    prompt_file: prompts/auth.md
+    severity: blocker
+    include_paths:
+      - "**/auth/**"
+      - "**/middleware/**"
+      - "**/guards/**"
+  
+  # Cryptography
+  - name: crypto
+    model: security-primary
+    prompt_file: prompts/crypto.md
+    severity: blocker
+  
+  # Secrets detection
+  - name: secrets
+    model: security-primary
+    prompt_file: prompts/secrets.md
+    severity: blocker
+  
+  # Input validation
+  - name: input-validation
+    model: security-primary
+    prompt_file: prompts/validation.md
+    severity: blocker
+  
+  # API security
+  - name: api-security
+    model: security-primary
+    prompt_file: prompts/api-security.md
+    severity: blocker
+    include_paths:
+      - "api/**"
+      - "**/routes/**"
+      - "**/endpoints/**"
+  
+  # Database security
+  - name: database-security
+    model: security-primary
+    prompt_file: prompts/database-security.md
+    severity: blocker
+    include_paths:
+      - "**/*.sql"
+      - "**/models/**"
+      - "**/repositories/**"
+  
+  # Dependency vulnerabilities
+  - name: dependencies
+    model: security-primary
+    prompt_file: prompts/dependencies.md
+    severity: blocker
+    include_paths:
+      - "package.json"
+      - "requirements.txt"
+      - "go.mod"
+      - "Cargo.toml"
+
+triggers:
+  # Review ALL branches (security is critical)
+  branches: []  # Empty = all branches
+  
+  # Don't skip any authors (even bots need security review)
+  ignore_authors: []
+  
+  # Review even small changes
+  min_changes: 1
+  max_changes: 5000
+  max_files: 200
+
+output:
+  summary: true
+  inline_comments: true
+  
+  # Show ALL findings (even info level)
+  min_severity: info
+  
+  # Don't limit comments - show everything
+  max_comments: 100
+  max_comments_per_file: 20
+  
+  group_by_file: true
+
+advanced:
+  parallel_pipelines: true
+  cache_config: false  # Always fetch fresh config
+  retry_on_error: true
+  max_retries: 5  # Retry more for security checks

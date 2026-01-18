@@ -1,0 +1,169 @@
+# Enterprise Production Configuration
+#
+# Full-featured setup for large teams with comprehensive checks.
+# Includes security, quality, performance, and documentation reviews.
+
+models:
+  # Primary model for critical reviews
+  gpt4-turbo:
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    model: gpt-4-turbo-preview
+    temperature: 0.0
+    max_tokens: 8000
+    timeout: 90
+  
+  # Alternative model for code quality
+  claude-sonnet:
+    base_url: https://api.anthropic.com/v1
+    api_key_env: ANTHROPIC_API_KEY
+    model: claude-sonnet-4-20250514
+    temperature: 0.0
+    max_tokens: 8000
+    timeout: 90
+  
+  # Cost-effective model for non-critical checks
+  gpt-3.5:
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    model: gpt-3.5-turbo
+    temperature: 0.0
+    max_tokens: 4000
+    timeout: 60
+
+pipelines:
+  # SECURITY REVIEWS (Blocker level)
+  
+  - name: security-owasp
+    model: gpt4-turbo
+    prompt_file: prompts/security-owasp.md
+    severity: blocker
+    include_paths:
+      - "src/**/*.py"
+      - "src/**/*.js"
+      - "src/**/*.ts"
+      - "src/**/*.java"
+    exclude_paths:
+      - "**/*.test.*"
+      - "**/__tests__/**"
+  
+  - name: security-secrets
+    model: gpt4-turbo
+    prompt_file: prompts/security-secrets.md
+    severity: blocker
+  
+  # CODE QUALITY REVIEWS (Warning level)
+  
+  - name: code-quality
+    model: claude-sonnet
+    prompt_file: prompts/quality.md
+    severity: warning
+    include_paths:
+      - "src/**/*"
+    exclude_paths:
+      - "**/*.test.*"
+      - "**/*.spec.*"
+      - "**/*.md"
+  
+  - name: clean-code
+    model: claude-sonnet
+    prompt_file: prompts/clean-code.md
+    severity: warning
+    include_paths:
+      - "src/**/*.py"
+      - "src/**/*.ts"
+  
+  # PERFORMANCE REVIEWS (Warning level)
+  
+  - name: performance
+    model: gpt4-turbo
+    prompt_file: prompts/performance.md
+    severity: warning
+    include_paths:
+      - "src/**/*.py"
+      - "src/**/*.js"
+      - "src/**/*.ts"
+  
+  - name: database-queries
+    model: gpt4-turbo
+    prompt_file: prompts/database.md
+    severity: warning
+    include_paths:
+      - "src/**/*.py"
+      - "src/**/*.sql"
+  
+  # DOCUMENTATION (Info level)
+  
+  - name: api-documentation
+    model: gpt-3.5
+    prompt_file: prompts/api-docs.md
+    severity: info
+    include_paths:
+      - "src/**/*.py"
+      - "src/**/*.ts"
+  
+  - name: readme-updates
+    model: gpt-3.5
+    prompt_file: prompts/readme.md
+    severity: info
+    include_paths:
+      - "src/**/*"
+
+triggers:
+  # Only review PRs to protected branches
+  branches:
+    - main
+    - master
+    - develop
+    - release/*
+    - hotfix/*
+  
+  # Skip automated PRs
+  ignore_authors:
+    - dependabot[bot]
+    - renovate[bot]
+    - github-actions[bot]
+  
+  # Skip documentation-only changes
+  ignore_paths:
+    - "*.md"
+    - "docs/**"
+    - "*.lock"
+    - "package-lock.json"
+    - "yarn.lock"
+    - "poetry.lock"
+  
+  # Size limits
+  min_changes: 5
+  max_changes: 1500
+  max_files: 50
+
+output:
+  # Post comprehensive summary
+  summary: true
+  
+  # Post inline comments on code
+  inline_comments: true
+  
+  # Only show warnings and blockers (skip info in comments)
+  min_severity: warning
+  
+  # Limit total comments to avoid overwhelming
+  max_comments: 30
+  
+  # Limit per-file comments
+  max_comments_per_file: 5
+  
+  # Group findings by file in summary
+  group_by_file: true
+
+advanced:
+  # Run pipelines in parallel for speed
+  parallel_pipelines: true
+  
+  # Cache config for 5 minutes
+  cache_config: true
+  
+  # Retry on transient errors
+  retry_on_error: true
+  max_retries: 3

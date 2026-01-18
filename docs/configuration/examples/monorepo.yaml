@@ -1,0 +1,135 @@
+# Monorepo Configuration
+#
+# For projects with multiple services/packages:
+# - Backend (Python/Django)
+# - Frontend (React/TypeScript)
+# - Mobile (React Native)
+# - Shared libraries
+
+models:
+  default:
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    model: gpt-4
+    temperature: 0.0
+    max_tokens: 4000
+
+pipelines:
+  # Backend (Python/Django)
+  
+  - name: backend-security
+    model: default
+    prompt_file: prompts/python-security.md
+    severity: blocker
+    include_paths:
+      - "services/backend/**/*.py"
+      - "packages/api/**/*.py"
+    exclude_paths:
+      - "**/tests/**"
+  
+  - name: backend-quality
+    model: default
+    prompt_file: prompts/python-quality.md
+    severity: warning
+    include_paths:
+      - "services/backend/**/*.py"
+      - "packages/api/**/*.py"
+  
+  # Frontend (React/TypeScript)
+  
+  - name: frontend-security
+    model: default
+    prompt_file: prompts/react-security.md
+    severity: blocker
+    include_paths:
+      - "services/web/**/*.tsx"
+      - "services/web/**/*.ts"
+      - "packages/ui/**/*.tsx"
+      - "packages/ui/**/*.ts"
+  
+  - name: frontend-patterns
+    model: default
+    prompt_file: prompts/react-patterns.md
+    severity: warning
+    include_paths:
+      - "services/web/**/*.tsx"
+      - "packages/ui/**/*.tsx"
+  
+  # Mobile (React Native)
+  
+  - name: mobile-security
+    model: default
+    prompt_file: prompts/mobile-security.md
+    severity: blocker
+    include_paths:
+      - "services/mobile/**/*.tsx"
+      - "services/mobile/**/*.ts"
+  
+  - name: mobile-performance
+    model: default
+    prompt_file: prompts/mobile-performance.md
+    severity: warning
+    include_paths:
+      - "services/mobile/**/*.tsx"
+  
+  # Shared Libraries
+  
+  - name: shared-types
+    model: default
+    prompt_file: prompts/typescript-types.md
+    severity: warning
+    include_paths:
+      - "packages/types/**/*.ts"
+      - "packages/shared/**/*.ts"
+  
+  # Infrastructure as Code
+  
+  - name: terraform
+    model: default
+    prompt_file: prompts/terraform.md
+    severity: blocker
+    include_paths:
+      - "infrastructure/**/*.tf"
+      - "terraform/**/*.tf"
+  
+  - name: kubernetes
+    model: default
+    prompt_file: prompts/kubernetes.md
+    severity: blocker
+    include_paths:
+      - "k8s/**/*.yaml"
+      - "k8s/**/*.yml"
+      - "deployments/**/*.yaml"
+
+triggers:
+  branches:
+    - main
+    - develop
+  
+  # Skip service-specific bot updates
+  ignore_authors:
+    - dependabot[bot]
+    - renovate[bot]
+  
+  ignore_paths:
+    - "**/node_modules/**"
+    - "**/dist/**"
+    - "**/build/**"
+    - "**/*.lock"
+  
+  max_changes: 2500  # Monorepos can be large
+  max_files: 100
+
+output:
+  summary: true
+  inline_comments: true
+  min_severity: warning
+  max_comments: 50
+  max_comments_per_file: 8
+  group_by_file: true
+
+advanced:
+  parallel_pipelines: true
+  cache_config: true
+  retry_on_error: true
+  max_retries: 3
