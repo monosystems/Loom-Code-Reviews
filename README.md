@@ -25,9 +25,41 @@ cd Loom-Code-Reviews
 docker-compose up -d
 ```
 
+## Installation
+
+```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Copy environment file
+cp .env.example .env
+
+# Start services (Docker)
+docker-compose up -d postgres redis
+
+# Run database migrations
+alembic upgrade head
+```
+
 ## Documentation
 
 See the [docs](./docs/) directory for more information.
+
+## Contributing
+
+Contributions are welcome! Please read our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Code of Conduct
+
+Please note that this project is governed by our [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+## Security
+
+For security vulnerabilities, please read our [SECURITY.md](SECURITY.md).
 
 ## License
 
